@@ -11,6 +11,7 @@ use amethyst::{
 };
 
 mod state;
+mod systems;
 
 fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
@@ -31,8 +32,8 @@ fn main() -> amethyst::Result<()> {
                                     0.09, 0.59, 0.86, 1.0]),
                 )
                 .with_plugin(RenderFlat2D::default()),
-        )
-        ?;
+        )?
+        .with(systems::PlacementSystem, "paddle_system", &["input_system"]);
 
     let mut game = Application::new(resources, state::MyState, game_data)?;
     game.run();

@@ -6,8 +6,9 @@ use amethyst::{
     renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
     window::ScreenDimensions,
 };
-
 use log::info;
+
+use super::systems::{Tile};
 
 pub struct MyState;
 
@@ -110,11 +111,18 @@ fn load_sprites(world: &mut World) -> Vec<SpriteRender> {
 }
 
 fn init_sprites(world: &mut World, sprites: &[SpriteRender], dimensions: &ScreenDimensions) {
-    let grid = 9;
+    let grid = 4;
     let size = 48.;
     for i in 0..(grid * grid) {
-        let x = (dimensions.width() * 0.5) + (((i % grid) as f32 - (grid as f32 / 2.)) * size);
-        let y = (dimensions.height() * 0.5) + (((i / grid) as f32 - (grid as f32 / 2.)) * size);
+        let x = (dimensions.width() * 0.5) + (((i % grid) as f32 - (grid as f32 * 0.5)) * size);
+        let y = (dimensions.height() * 0.5) + (((i / grid) as f32 - (grid as f32 * 0.5)) * size);
+        let mut transform = Transform::default();
+        transform.set_translation_xyz(x, y, 0.);
+        world
+            .create_entity()
+            .with(Tile{ width: size, height: size})
+            .with(transform)
+            .build();
         init_grid_section(world, sprites, x, y);
     }
 }
@@ -123,9 +131,9 @@ fn init_grid_section(world: &mut World, sprites: &[SpriteRender], x: f32, y: f32
     let grid = 3;
     let size = 16.;
     for i in 0..(grid * grid) {
-        // Center our sprites around the center of the window
-        let xx = x + (((i % grid) as f32) * size);
-        let yy = y + (((i / grid) as f32) * size);
+        let g = grid as f32;
+        let xx = x + ((i % grid) as f32 * size);
+        let yy = y + ((i / grid) as f32 * size);
         let mut transform = Transform::default();
         transform.set_translation_xyz(xx, yy, 0.);
 
