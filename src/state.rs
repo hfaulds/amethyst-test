@@ -1,14 +1,14 @@
 use amethyst::{
-    assets::{AssetStorage, Loader},
     core::transform::Transform,
     input::{get_key, is_close_requested, is_key_down, VirtualKeyCode},
     prelude::*,
-    renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
+    renderer::Camera,
     window::ScreenDimensions,
 };
 use log::info;
 
-use super::systems::{Tile};
+use crate::resources::Sprites;
+use crate::systems::{Tile};
 
 pub struct MyState;
 
@@ -27,9 +27,8 @@ impl SimpleState for MyState {
         // Place the camera
         init_camera(world, &dimensions);
 
-        // Load our sprites and display them
-        let sprites = load_sprites(world);
-        init_sprites(world, &sprites, &dimensions);
+        let sprites = Sprites::initialize(world);
+        init_sprites(world, sprites, &dimensions);
     }
 
     fn handle_event(
@@ -71,77 +70,19 @@ fn init_camera(world: &mut World, dimensions: &ScreenDimensions) {
         .build();
 }
 
-fn load_sprites(world: &mut World) -> Vec<SpriteRender> {
-    // Load the texture for our sprites. We'll later need to
-    // add a handle to this texture to our `SpriteRender`s, so
-    // we need to keep a reference to it.
-    let texture_handle = {
-        let loader = world.read_resource::<Loader>();
-        let texture_storage = world.read_resource::<AssetStorage<Texture>>();
-        loader.load(
-            "sprites/tilemap_packed.png",
-            ImageFormat::default(),
-            (),
-            &texture_storage,
-        )
-    };
-
-    // Load the spritesheet definition file, which contains metadata on our
-    // spritesheet texture.
-    let sheet_handle = {
-        let loader = world.read_resource::<Loader>();
-        let sheet_storage = world.read_resource::<AssetStorage<SpriteSheet>>();
-        loader.load(
-            "sprites/tilemap_packed.ron",
-            SpriteSheetFormat(texture_handle),
-            (),
-            &sheet_storage,
-        )
-    };
-
-    // Create our sprite renders. Each will have a handle to the texture
-    // that it renders from. The handle is safe to clone, since it just
-    // references the asset.
-    (0..9)
-        .map(|i| SpriteRender {
-            sprite_sheet: sheet_handle.clone(),
-            sprite_number: i,
-        })
-        .collect()
-}
-
-fn init_sprites(world: &mut World, sprites: &[SpriteRender], dimensions: &ScreenDimensions) {
-    let grid = 4;
+fn init_sprites(world: &mut World, sprites: Sprites, dimensions: &ScreenDimensions) {
+    let grid = 8;
     let size = 48.;
     for i in 0..(grid * grid) {
-        let x = (dimensions.width() * 0.5) + (((i % grid) as f32 - (grid as f32 * 0.5)) * size);
-        let y = (dimensions.height() * 0.5) + (((i / grid) as f32 - (grid as f32 * 0.5)) * size);
+        let x = (dimensions.width() * 0.5) + (((i % grid) as f32 - (grid as f32 * 0.5) + 0.5) * size);
+        let y = (dimensions.height() * 0.5) + (((i / grid) as f32 - (grid as f32 * 0.5) + 0.5) * size);
         let mut transform = Transform::default();
         transform.set_translation_xyz(x, y, 0.);
         world
             .create_entity()
             .with(Tile{ width: size, height: size})
             .with(transform)
+            .with(sprites.sprite_render(0))
             .build();
-        init_grid_section(world, sprites, x, y);
     }
 }
-
-fn init_grid_section(world: &mut World, sprites: &[SpriteRender], x: f32, y: f32) {
-    let grid = 3;
-    let size = 16.;
-    for i in 0..(grid * grid) {
-        let g = grid as f32;
-        let xx = x + ((i % grid) as f32 * size);
-        let yy = y + ((i / grid) as f32 * size);
-        let mut transform = Transform::default();
-        transform.set_translation_xyz(xx, yy, 0.);
-
-        world
-            .create_entity()
-            .with(sprites[i].clone())
-            .with(transform)
-            .build();
-        }
-}
-

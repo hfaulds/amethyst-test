@@ -4,60 +4,16 @@
     sprites: [
         (
             x: 0,
-            y: 80,
-            width: 16,
-            height: 16,
-        ),
-        (
-            x: 16,
-            y: 80,
-            width: 16,
-            height: 16,
-        ),
-        (
-            x: 32,
-            y: 80,
-            width: 16,
-            height: 16,
+            y: 48,
+            width: 48,
+            height: 48,
         ),
 
         (
-            x: 0,
-            y: 64,
+            x: 396,
+            y: 0,
             width: 16,
             height: 16,
         ),
-        (
-            x: 16,
-            y: 64,
-            width: 16,
-            height: 16,
-        ),
-        (
-            x: 32,
-            y: 64,
-            width: 16,
-            height: 16,
-        ),
-
-        (
-            x: 0,
-            y: 48,
-            width: 16,
-            height: 16,
-        ),
-        (
-            x: 16,
-            y: 48,
-            width: 16,
-            height: 16,
-        ),
-        (
-            x: 32,
-            y: 48,
-            width: 16,
-            height: 16,
-        ),
-
     ]
 )

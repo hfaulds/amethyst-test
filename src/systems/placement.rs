@@ -1,8 +1,12 @@
-use amethyst::core::{Transform, SystemDesc};
-use amethyst::derive::SystemDesc;
-use amethyst::ecs::{Component, DenseVecStorage, Join, Read, ReadStorage, System, SystemData, World, WriteStorage};
-use amethyst::input::{InputHandler, StringBindings};
-use amethyst::winit::MouseButton;
+use amethyst::{
+    core::{Transform, SystemDesc},
+    derive::SystemDesc,
+    ecs::*,
+    input::{InputHandler, StringBindings},
+    winit::MouseButton,
+    window::ScreenDimensions,
+};
+use crate::resources::Sprites;
 
 /// This system is responsible for placing characters.
 #[derive(SystemDesc)]
@@ -12,21 +16,30 @@ impl<'s> System<'s> for PlacementSystem {
     type SystemData = (
         ReadStorage<'s, Tile>,
         ReadStorage<'s, Transform>,
-        WriteStorage<'s, Character>,
         Read<'s, InputHandler<StringBindings>>,
+        Entities<'s>,
+        Read<'s, LazyUpdate>,
+        ReadExpect<'s, Sprites>,
+        ReadExpect<'s, ScreenDimensions>,
     );
 
-    fn run(&mut self, (tiles, transforms, mut chars, input): Self::SystemData) {
+    fn run(&mut self, (tiles, transforms, input, entities, updater, sprites, screen): Self::SystemData) {
         // Move every ball according to its speed, and the time passed.
         if input.mouse_button_is_down(MouseButton::Left) {
             let (x, y) = input.mouse_position().unwrap();
+            let x = x * 0.5;
+            let y = (screen.height() - y) * 0.5;
             for (tile, transform) in (&tiles, &transforms).join() {
-                let left = transform.translation().x;
-                let bottom = transform.translation().y;
-                let right = transform.translation().x + tile.width;
-                let top = transform.translation().y + tile.height;
-                if point_in_rect(x / 2., y / 2., left, bottom, right, top) {
-                    println!("hit")
+                let left = transform.translation().x - (tile.width * 0.5);
+                let bottom = transform.translation().y - (tile.height * 0.5);
+                let right = transform.translation().x + (tile.width * 0.5);
+                let top = transform.translation().y + (tile.height * 0.5);
+                if point_in_rect(x, y, left, bottom, right, top) {
+                    let mut transform = Transform::default();
+                    transform.set_translation_xyz(left + (tile.width * 0.5), bottom + (tile.height * 0.5), 0.1);
+                    let character = entities.create();
+                    updater.insert(character, sprites.sprite_render(1));
+                    updater.insert(character, transform.clone());
                 }
             }
         }
@@ -43,8 +56,6 @@ impl Component for Tile {
 }
 
 pub struct Character {
-    x: u32,
-    y: u32,
 }
 
 impl Component for Character {
