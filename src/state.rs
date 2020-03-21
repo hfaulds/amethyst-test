@@ -91,7 +91,7 @@ fn init_grid(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
         transform.set_translation_xyz(x, y, 0.);
         world
             .create_entity()
-            .with(Tile{ width: size, height: size})
+            .with(Tile{ size, occupied: false })
             .with(transform)
             .with(sprites.grid_sprite_render())
             .build();

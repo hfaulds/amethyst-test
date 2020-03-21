@@ -1,6 +1,6 @@
 use amethyst::{
     core::{
-        math::{Point3, Vector2},
+        math::{Point3, Vector2, Vector3},
         Transform,
         SystemDesc,
     },
@@ -25,7 +25,7 @@ impl<'s> System<'s> for PlacementSystem {
         ReadExpect<'s, ScreenDimensions>,
         ReadStorage<'s, Camera>,
         ReadStorage<'s, Transform>,
-        ReadStorage<'s, Tile>,
+        WriteStorage<'s, Tile>,
         Read<'s, LazyUpdate>,
         ReadExpect<'s, Sprites>,
     );
@@ -38,7 +38,7 @@ impl<'s> System<'s> for PlacementSystem {
             screen,
             cameras,
             transforms,
-            tiles,
+            mut tiles,
             updater,
             sprites,
         ): Self::SystemData
@@ -55,17 +55,20 @@ impl<'s> System<'s> for PlacementSystem {
             None => return,
         };
 
-        for (tile, transform) in (&tiles, &transforms).join() {
-            let left = transform.translation().x - (tile.width * 0.5);
-            let bottom = transform.translation().y - (tile.height * 0.5);
-            let right = transform.translation().x + (tile.width * 0.5);
-            let top = transform.translation().y + (tile.height * 0.5);
-            if point_in_rect(pos_world.x, pos_world.y, left, bottom, right, top) {
-                let mut transform = Transform::default();
-                transform.set_translation_xyz(left + (tile.width * 0.5), bottom + (tile.height * 0.5), 0.1);
-                let character = entities.create();
-                updater.insert(character, sprites.character_sprite_render());
-                updater.insert(character, transform.clone());
+        for (tile, transform) in (&mut tiles, &transforms).join() {
+            let bounding_box = tile.bounding_box(transform.translation());
+            if bounding_box.collide(pos_world) {
+                if tile.occupied {
+                    println!("no");
+                } else {
+                    println!("yes");
+                    let mut transform = Transform::default();
+                    transform.set_translation_xyz(bounding_box.left + (tile.size * 0.5), bounding_box.bottom + (tile.size * 0.5), 0.1);
+                    let character = entities.create();
+                    updater.insert(character, sprites.character_sprite_render());
+                    updater.insert(character, transform.clone());
+                    tile.occupied = true;
+                }
             }
         }
     }
@@ -102,8 +105,18 @@ fn get_world_pos_for_cursor(
 }
 
 pub struct Tile {
-    pub width: f32,
-    pub height: f32,
+    pub size: f32,
+    pub occupied: bool,
+}
+
+impl Tile {
+    pub fn bounding_box(&self, pos: &Vector3<f32>) -> BoundingBox {
+        let left = pos.x - (self.size * 0.5);
+        let bottom = pos.y - (self.size * 0.5);
+        let right = pos.x + (self.size * 0.5);
+        let top = pos.y + (self.size * 0.5);
+        return BoundingBox{left, bottom, right, top}
+    }
 }
 
 impl Component for Tile {
@@ -117,6 +130,18 @@ impl Component for Character {
     type Storage = DenseVecStorage<Self>;
 }
 
-fn point_in_rect(x: f32, y: f32, left: f32, bottom: f32, right: f32, top: f32) -> bool {
-    x >= left && x <= right && y >= bottom && y <= top
+pub struct BoundingBox {
+    pub left: f32,
+    pub bottom: f32,
+    pub right: f32,
+    pub top: f32,
+}
+
+impl BoundingBox {
+    fn collide(&self, point: Point3<f32>) -> bool {
+        point.x >= self.left &&
+            point.x <= self.right &&
+            point.y >= self.bottom &&
+            point.y <= self.top
+    }
 }
