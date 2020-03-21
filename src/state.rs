@@ -13,22 +13,17 @@ use crate::systems::{Tile};
 pub struct MyState;
 
 impl SimpleState for MyState {
-    // On start will run when this state is initialized. For more
-    // state lifecycle hooks, see:
-    // https://book.amethyst.rs/stable/concepts/state.html#life-cycle
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
 
-        // Get the screen dimensions so we can initialize the camera and
-        // place our sprites correctly later. We'll clone this since we'll
-        // pass the world mutably to the following functions.
-        let dimensions = (*world.read_resource::<ScreenDimensions>()).clone();
+        let screen = (*world.read_resource::<ScreenDimensions>()).clone();
 
-        // Place the camera
-        init_camera(world, &dimensions);
+        init_camera(world, &screen);
 
         let sprites = Sprites::initialize(world);
-        init_sprites(world, sprites, &dimensions);
+        init_shop(world, &sprites, &screen);
+        init_grid(world, &sprites, &screen);
+        init_reserve(world, &sprites, &screen);
     }
 
     fn handle_event(
@@ -57,32 +52,64 @@ impl SimpleState for MyState {
     }
 }
 
-fn init_camera(world: &mut World, dimensions: &ScreenDimensions) {
+fn init_camera(world: &mut World, screen: &ScreenDimensions) {
     // Center the camera in the middle of the screen, and let it cover
     // the entire screen
     let mut transform = Transform::default();
-    transform.set_translation_xyz(dimensions.width() * 0.5, dimensions.height() * 0.5, 1.);
+    transform.set_translation_xyz(screen.width() * 0.5, screen.height() * 0.5, 1.);
 
     world
         .create_entity()
-        .with(Camera::standard_2d(dimensions.width(), dimensions.height()))
+        .with(Camera::standard_2d(screen.width(), screen.height()))
         .with(transform)
         .build();
 }
 
-fn init_sprites(world: &mut World, sprites: Sprites, dimensions: &ScreenDimensions) {
+fn init_shop(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
+    let row = 8;
+    let size = 48.;
+    for i in 0..row {
+        let mut transform = Transform::default();
+        let x = (screen.width() * 0.5) + ((i as f32 - (row as f32 * 0.5) + 0.5) * size);
+        let y = screen.height() - size;
+        transform.set_translation_xyz(x, y, 0.);
+        world
+            .create_entity()
+            .with(transform)
+            .with(sprites.shop_sprite_render())
+            .build();
+    }
+}
+
+fn init_grid(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
     let grid = 8;
     let size = 48.;
     for i in 0..(grid * grid) {
-        let x = (dimensions.width() * 0.5) + (((i % grid) as f32 - (grid as f32 * 0.5) + 0.5) * size);
-        let y = (dimensions.height() * 0.5) + (((i / grid) as f32 - (grid as f32 * 0.5) + 0.5) * size);
+        let x = (screen.width() * 0.5) + (((i % grid) as f32 - (grid as f32 * 0.5) + 0.5) * size);
+        let y = (screen.height() * 0.5) + (((i / grid) as f32 - (grid as f32 * 0.5) + 0.5) * size);
         let mut transform = Transform::default();
         transform.set_translation_xyz(x, y, 0.);
         world
             .create_entity()
             .with(Tile{ width: size, height: size})
             .with(transform)
-            .with(sprites.sprite_render(0))
+            .with(sprites.grid_sprite_render())
+            .build();
+    }
+}
+
+fn init_reserve(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
+    let row = 8;
+    let size = 48.;
+    for i in 0..row {
+        let mut transform = Transform::default();
+        let x = (screen.width() * 0.5) + ((i as f32 - (row as f32 * 0.5) + 0.5) * size);
+        let y = size;
+        transform.set_translation_xyz(x, y, 0.);
+        world
+            .create_entity()
+            .with(transform)
+            .with(sprites.reserve_sprite_render())
             .build();
     }
 }

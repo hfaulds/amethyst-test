@@ -41,10 +41,31 @@ impl Sprites {
         Sprites { handle: sheet_handle }
     }
 
-    pub fn sprite_render(&self, sprite_number: usize) -> SpriteRender {
+    pub fn grid_sprite_render(&self) -> SpriteRender {
         SpriteRender {
             sprite_sheet: self.handle.clone(),
-            sprite_number,
+            sprite_number: 0,
+        }
+    }
+
+    pub fn shop_sprite_render(&self) -> SpriteRender {
+        SpriteRender {
+            sprite_sheet: self.handle.clone(),
+            sprite_number: 1,
+        }
+    }
+
+    pub fn reserve_sprite_render(&self) -> SpriteRender {
+        SpriteRender {
+            sprite_sheet: self.handle.clone(),
+            sprite_number: 2,
+        }
+    }
+
+    pub fn character_sprite_render(&self) -> SpriteRender {
+        SpriteRender {
+            sprite_sheet: self.handle.clone(),
+            sprite_number: 3,
         }
     }
 }
