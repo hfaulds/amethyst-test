@@ -11,12 +11,11 @@ use amethyst::{
     renderer::{ActiveCamera,Camera},
     window::ScreenDimensions,
 };
-use crate::resources::Sprites;
 
 /// This system is responsible for placing characters.
 #[derive(SystemDesc)]
 pub struct PlacementSystem {
-    pub selected_character: Option<Transform>,
+    pub selection: Option<SelectionStart>,
 }
 
 impl<'s> System<'s> for PlacementSystem {
@@ -26,9 +25,7 @@ impl<'s> System<'s> for PlacementSystem {
         Read<'s, ActiveCamera>,
         ReadExpect<'s, ScreenDimensions>,
         ReadStorage<'s, Camera>,
-        ReadStorage<'s, Transform>,
-        Read<'s, LazyUpdate>,
-        ReadExpect<'s, Sprites>,
+        WriteStorage<'s, Transform>,
         WriteStorage<'s, Character>,
         ReadExpect<'s, Shop>,
     );
@@ -40,14 +37,19 @@ impl<'s> System<'s> for PlacementSystem {
             active_camera,
             screen,
             cameras,
-            transforms,
-            updater,
-            sprites,
+            mut transforms,
             characters,
             shop,
         ): Self::SystemData
     ) {
         if !input.mouse_button_is_down(MouseButton::Left) {
+            if let Some(selection) = &self.selection {
+                let (_, transform) = (&characters, &mut transforms).join()
+                    .get(selection.character, &entities)
+                    .unwrap();
+                transform.set_translation_xyz(selection.start_pos.x, selection.start_pos.y, 0.1);
+                self.selection = None;
+            }
             return
         }
         let mouse_position = match input.mouse_position() {
@@ -59,16 +61,18 @@ impl<'s> System<'s> for PlacementSystem {
             None => return,
         };
 
-        if let Some(character) = shop.grid.collide(pos_world) {
-            println!("yes");
-/*
-                let mut transform = Transform::default();
-                transform.set_translation_xyz(bounding_box.left + (tile.size * 0.5), bounding_box.bottom + (tile.size * 0.5), 0.1);
-                let character = entities.create();
-                updater.insert(character, sprites.character_sprite_render());
-                updater.insert(character, transform.clone());
-                tile.occupied = true;
-*/
+        if let Some(selection) = &self.selection {
+            let (_, transform) = (&characters, &mut transforms).join()
+                .get(selection.character, &entities)
+                .unwrap();
+            transform.set_translation_xyz(pos_world.x, pos_world.y, 0.1);
+        } else {
+            if let Some(entity) = shop.grid.collide(pos_world) {
+                self.selection = Some(SelectionStart{
+                    character: entity,
+                    start_pos: pos_world,
+                });
+            }
         }
     }
 }
@@ -79,7 +83,7 @@ fn get_world_pos_for_cursor(
     active_camera: Read<ActiveCamera>,
     screen: ReadExpect<ScreenDimensions>,
     cameras: ReadStorage<Camera>,
-    transforms: &ReadStorage<Transform>,
+    transforms: &WriteStorage<Transform>,
 ) -> Option<Point3<f32>> {
     let mut camera_join = (&cameras, transforms).join();
     if let Some((camera, camera_transform)) = active_camera
@@ -123,6 +127,11 @@ pub struct Reserve {
     pub grid: Grid<8,1>,
 }
 
+pub struct SelectionStart {
+   pub character: Entity,
+   pub start_pos: Point3<f32>,
+}
+
 pub struct Grid<const X: usize, const Y: usize> {
     pub x: f32,
     pub y: f32,
@@ -132,7 +141,7 @@ pub struct Grid<const X: usize, const Y: usize> {
 
 impl<const X: usize, const Y: usize> Grid<X,Y> {
     fn collide(&self, point: Point3<f32>) -> Option<Entity> {
-        let x = ((point.x + (self.entity_size/2.) - self.x) / self.entity_size);
+        let x = (point.x + (self.entity_size/2.) - self.x) / self.entity_size;
         if x < 0. {
             return None
         }
@@ -140,7 +149,7 @@ impl<const X: usize, const Y: usize> Grid<X,Y> {
         if x >= X {
             return None
         }
-        let y = ((point.y + (self.entity_size/2.) - self.y) / self.entity_size);
+        let y = (point.y + (self.entity_size/2.) - self.y) / self.entity_size;
         if y < 0. {
             return None
         }
