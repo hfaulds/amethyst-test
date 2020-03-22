@@ -1,6 +1,6 @@
 use amethyst::{
     core::{
-        math::{Point3, Vector2, Vector3},
+        math::{Point3, Vector2},
         Transform,
         SystemDesc,
     },
@@ -15,7 +15,9 @@ use crate::resources::Sprites;
 
 /// This system is responsible for placing characters.
 #[derive(SystemDesc)]
-pub struct PlacementSystem;
+pub struct PlacementSystem {
+    pub selected_character: Option<Transform>,
+}
 
 impl<'s> System<'s> for PlacementSystem {
     type SystemData = (
@@ -25,9 +27,10 @@ impl<'s> System<'s> for PlacementSystem {
         ReadExpect<'s, ScreenDimensions>,
         ReadStorage<'s, Camera>,
         ReadStorage<'s, Transform>,
-        WriteStorage<'s, Tile>,
         Read<'s, LazyUpdate>,
         ReadExpect<'s, Sprites>,
+        WriteStorage<'s, Character>,
+        ReadExpect<'s, Shop>,
     );
 
     fn run(
@@ -38,9 +41,10 @@ impl<'s> System<'s> for PlacementSystem {
             screen,
             cameras,
             transforms,
-            mut tiles,
             updater,
             sprites,
+            characters,
+            shop,
         ): Self::SystemData
     ) {
         if !input.mouse_button_is_down(MouseButton::Left) {
@@ -55,21 +59,16 @@ impl<'s> System<'s> for PlacementSystem {
             None => return,
         };
 
-        for (tile, transform) in (&mut tiles, &transforms).join() {
-            let bounding_box = tile.bounding_box(transform.translation());
-            if bounding_box.collide(pos_world) {
-                if tile.occupied {
-                    println!("no");
-                } else {
-                    println!("yes");
-                    let mut transform = Transform::default();
-                    transform.set_translation_xyz(bounding_box.left + (tile.size * 0.5), bounding_box.bottom + (tile.size * 0.5), 0.1);
-                    let character = entities.create();
-                    updater.insert(character, sprites.character_sprite_render());
-                    updater.insert(character, transform.clone());
-                    tile.occupied = true;
-                }
-            }
+        if let Some(character) = shop.grid.collide(pos_world) {
+            println!("yes");
+/*
+                let mut transform = Transform::default();
+                transform.set_translation_xyz(bounding_box.left + (tile.size * 0.5), bounding_box.bottom + (tile.size * 0.5), 0.1);
+                let character = entities.create();
+                updater.insert(character, sprites.character_sprite_render());
+                updater.insert(character, transform.clone());
+                tile.occupied = true;
+*/
         }
     }
 }
@@ -104,44 +103,51 @@ fn get_world_pos_for_cursor(
     None
 }
 
-pub struct Tile {
-    pub size: f32,
-    pub occupied: bool,
-}
-
-impl Tile {
-    pub fn bounding_box(&self, pos: &Vector3<f32>) -> BoundingBox {
-        let left = pos.x - (self.size * 0.5);
-        let bottom = pos.y - (self.size * 0.5);
-        let right = pos.x + (self.size * 0.5);
-        let top = pos.y + (self.size * 0.5);
-        return BoundingBox{left, bottom, right, top}
-    }
-}
-
-impl Component for Tile {
-    type Storage = DenseVecStorage<Self>;
-}
-
 pub struct Character {
+    pub cost: u8,
 }
 
 impl Component for Character {
     type Storage = DenseVecStorage<Self>;
 }
 
-pub struct BoundingBox {
-    pub left: f32,
-    pub bottom: f32,
-    pub right: f32,
-    pub top: f32,
+pub struct Shop {
+    pub grid: Grid<8,1>,
 }
 
-impl BoundingBox {
-    fn collide(&self, point: Point3<f32>) -> bool {
-        point.x >= self.left &&
-            point.x <= self.right &&
-            point.y >= self.bottom &&
-            point.y <= self.top
+pub struct Board {
+    pub grid: Grid<8,8>,
+}
+
+pub struct Reserve {
+    pub grid: Grid<8,1>,
+}
+
+pub struct Grid<const X: usize, const Y: usize> {
+    pub x: f32,
+    pub y: f32,
+    pub entity_size: f32,
+    pub entities: [[Option<Entity>;X];Y],
+}
+
+impl<const X: usize, const Y: usize> Grid<X,Y> {
+    fn collide(&self, point: Point3<f32>) -> Option<Entity> {
+        let x = ((point.x + (self.entity_size/2.) - self.x) / self.entity_size) as i8;
+        if x < 0 {
+            return None
+        }
+        let x = x as usize;
+        if x >= X {
+            return None
+        }
+        let y = ((point.y + (self.entity_size/2.) - self.y) / self.entity_size) as i8;
+        if y < 0 {
+            return None
+        }
+        let y = y as usize;
+        if y >= Y {
+            return None
+        }
+        return self.entities[y as usize][x as usize]
     }
 }

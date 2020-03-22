@@ -1,3 +1,4 @@
+#![feature(const_generics)]
 use amethyst::{
     core::transform::TransformBundle,
     prelude::*,
@@ -7,6 +8,8 @@ use amethyst::{
         types::DefaultBackend,
         RenderingBundle,
     },
+
+    ui::{RenderUi, UiBundle},
     utils::application_root_dir,
 };
 
@@ -29,12 +32,13 @@ fn main() -> amethyst::Result<()> {
             RenderingBundle::<DefaultBackend>::new()
                 .with_plugin(
                     RenderToWindow::from_config_path(display_config)
-                        .with_clear([
-                                    0.09, 0.59, 0.86, 1.0]),
+                        .with_clear([0.09, 0.59, 0.86, 1.0]),
                 )
-                .with_plugin(RenderFlat2D::default()),
+                .with_plugin(RenderFlat2D::default())
+                .with_plugin(RenderUi::default()),
         )?
-        .with(systems::PlacementSystem, "paddle_system", &["input_system"]);
+        .with_bundle(UiBundle::<StringBindings>::new())?
+        .with(systems::PlacementSystem{selected_character: None}, "paddle_system", &["input_system"]);
 
     let mut game = Application::new(resources, state::MyState, game_data)?;
     game.run();

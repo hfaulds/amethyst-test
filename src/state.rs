@@ -8,7 +8,7 @@ use amethyst::{
 use log::info;
 
 use crate::resources::Sprites;
-use crate::systems::{Tile};
+use crate::systems::{*};
 
 pub struct MyState;
 
@@ -68,17 +68,35 @@ fn init_camera(world: &mut World, screen: &ScreenDimensions) {
 fn init_shop(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
     let row = 8;
     let size = 48.;
+    let mut shop = Shop{
+        grid: Grid{
+            x: (screen.width() * 0.5) + ((0. - (row as f32 * 0.5) + 0.5) * size),
+            y: screen.height() - size,
+            entity_size: size,
+            entities: [[None; 8];1],
+        },
+    };
     for i in 0..row {
-        let mut transform = Transform::default();
         let x = (screen.width() * 0.5) + ((i as f32 - (row as f32 * 0.5) + 0.5) * size);
         let y = screen.height() - size;
+        let mut transform = Transform::default();
         transform.set_translation_xyz(x, y, 0.);
         world
             .create_entity()
-            .with(transform)
             .with(sprites.shop_sprite_render())
+            .with(transform)
             .build();
+        let mut transform = Transform::default();
+        transform.set_translation_xyz(x, y, 0.1);
+        let character = world
+            .create_entity()
+            .with(sprites.character_sprite_render())
+            .with(transform)
+            .with(Character{cost: 1})
+            .build();
+        shop.grid.entities[0][i] = Some(character);
     }
+    world.insert(shop)
 }
 
 fn init_grid(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
@@ -91,9 +109,8 @@ fn init_grid(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
         transform.set_translation_xyz(x, y, 0.);
         world
             .create_entity()
-            .with(Tile{ size, occupied: false })
-            .with(transform)
             .with(sprites.grid_sprite_render())
+            .with(transform)
             .build();
     }
 }
