@@ -1,6 +1,6 @@
 use amethyst::{
     core::{
-        math::{Point3, Vector2},
+        math::{Point2, Point3, Vector2},
         Transform,
         SystemDesc,
     },
@@ -67,12 +67,7 @@ impl<'s> System<'s> for PlacementSystem {
                 .unwrap();
             transform.set_translation_xyz(pos_world.x, pos_world.y, 0.1);
         } else {
-            if let Some(entity) = shop.grid.collide(pos_world) {
-                self.selection = Some(SelectionStart{
-                    character: entity,
-                    start_pos: pos_world,
-                });
-            }
+            self.selection = shop.grid.select(pos_world);
         }
     }
 }
@@ -129,7 +124,7 @@ pub struct Reserve {
 
 pub struct SelectionStart {
    pub character: Entity,
-   pub start_pos: Point3<f32>,
+   pub start_pos: Point2<f32>,
 }
 
 pub struct Grid<const X: usize, const Y: usize> {
@@ -140,7 +135,7 @@ pub struct Grid<const X: usize, const Y: usize> {
 }
 
 impl<const X: usize, const Y: usize> Grid<X,Y> {
-    fn collide(&self, point: Point3<f32>) -> Option<Entity> {
+    fn select(&self, point: Point3<f32>) -> Option<SelectionStart> {
         let x = (point.x + (self.entity_size/2.) - self.x) / self.entity_size;
         if x < 0. {
             return None
@@ -157,6 +152,15 @@ impl<const X: usize, const Y: usize> Grid<X,Y> {
         if y >= Y {
             return None
         }
-        return self.entities[y as usize][x as usize]
+        if let Some(entity) = self.entities[y as usize][x as usize] {
+            return Some(SelectionStart{
+                character: entity,
+                start_pos: Point2::new(
+                    self.x + (x as f32 * self.entity_size),
+                    self.y + (y as f32 * self.entity_size),
+                ),
+            });
+        }
+        None
     }
 }
