@@ -22,7 +22,7 @@ impl SimpleState for MyState {
 
         let sprites = Sprites::initialize(world);
         init_shop(world, &sprites, &screen);
-        init_grid(world, &sprites, &screen);
+        init_board(world, &sprites, &screen);
         init_reserve(world, &sprites, &screen);
     }
 
@@ -99,9 +99,18 @@ fn init_shop(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
     world.insert(shop)
 }
 
-fn init_grid(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
+fn init_board(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
     let grid = 8;
     let size = 48.;
+    let board = Board{
+        grid: Grid{
+            x: (screen.width() * 0.5) + ((0. - (grid as f32 * 0.5) + 0.5) * size),
+            y: (screen.height() * 0.5) + ((0. - (grid as f32 * 0.5) + 0.5) * size),
+            entity_size: size,
+            entities: [[None; 8];8],
+        },
+    };
+    world.insert(board);
     for i in 0..(grid * grid) {
         let x = (screen.width() * 0.5) + (((i % grid) as f32 - (grid as f32 * 0.5) + 0.5) * size);
         let y = (screen.height() * 0.5) + (((i / grid) as f32 - (grid as f32 * 0.5) + 0.5) * size);
@@ -118,6 +127,15 @@ fn init_grid(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
 fn init_reserve(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
     let row = 8;
     let size = 48.;
+    let reserve = Reserve{
+        grid: Grid{
+            x: (screen.width() * 0.5) + ((0. - (row as f32 * 0.5) + 0.5) * size),
+            y: size,
+            entity_size: size,
+            entities: [[None; 8];1],
+        },
+    };
+    world.insert(reserve);
     for i in 0..row {
         let mut transform = Transform::default();
         let x = (screen.width() * 0.5) + ((i as f32 - (row as f32 * 0.5) + 0.5) * size);

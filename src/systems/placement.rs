@@ -132,16 +132,16 @@ pub struct Grid<const X: usize, const Y: usize> {
 
 impl<const X: usize, const Y: usize> Grid<X,Y> {
     fn collide(&self, point: Point3<f32>) -> Option<Entity> {
-        let x = ((point.x + (self.entity_size/2.) - self.x) / self.entity_size) as i8;
-        if x < 0 {
+        let x = ((point.x + (self.entity_size/2.) - self.x) / self.entity_size);
+        if x < 0. {
             return None
         }
         let x = x as usize;
         if x >= X {
             return None
         }
-        let y = ((point.y + (self.entity_size/2.) - self.y) / self.entity_size) as i8;
-        if y < 0 {
+        let y = ((point.y + (self.entity_size/2.) - self.y) / self.entity_size);
+        if y < 0. {
             return None
         }
         let y = y as usize;
