@@ -3,6 +3,11 @@ use amethyst::{
     ecs::Entity,
 };
 
+pub struct Money {
+    pub gold: u8,
+    pub text: Entity,
+}
+
 pub struct Shop {
     pub grid: Grid<8,1>,
 }

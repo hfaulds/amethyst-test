@@ -7,9 +7,10 @@ use amethyst::{
     derive::SystemDesc,
     ecs::*,
     input::{InputHandler, StringBindings},
-    winit::MouseButton,
     renderer::{ActiveCamera,Camera},
+    ui::UiText,
     window::ScreenDimensions,
+    winit::MouseButton,
 };
 use crate::components::Character;
 use crate::resources::{*};
@@ -31,6 +32,8 @@ impl<'s> System<'s> for PurchaseSystem {
         ReadStorage<'s, Character>,
         WriteExpect<'s, Shop>,
         WriteExpect<'s, Reserve>,
+        WriteStorage<'s, UiText>,
+        WriteExpect<'s, Money>,
     );
 
     fn run(
@@ -44,6 +47,8 @@ impl<'s> System<'s> for PurchaseSystem {
             characters,
             mut shop,
             mut reserve,
+            mut text,
+            mut money,
         ): Self::SystemData
     ) {
         let mouse_position = match input.mouse_position() {
@@ -57,7 +62,7 @@ impl<'s> System<'s> for PurchaseSystem {
 
         if !input.mouse_button_is_down(MouseButton::Left) {
             if let Some(selection) = &self.selection {
-                finish_selection(selection, pos_world, &characters, &mut transforms, &entities, &mut shop, &mut reserve);
+                finish_selection(selection, pos_world, &characters, &mut transforms, &entities, &mut shop, &mut reserve, &mut text, &mut money);
                 self.selection = None;
             }
             return
@@ -99,15 +104,23 @@ fn finish_selection(
     entities: &Entities,
     shop: &mut WriteExpect<Shop>,
     reserve: &mut WriteExpect<Reserve>,
+    text: &mut WriteStorage<UiText>,
+    money: &mut WriteExpect<Money>,
 ) {
     let (_, transform) = (characters, transforms).join()
         .get(selection.character, entities)
         .unwrap();
 
     if let Collision::Empty(p, i) = reserve.grid.collide(pos) {
-        shop.grid.remove(i);
+        shop.grid.remove(selection.start_index);
         reserve.grid.add(i, selection.character);
         transform.set_translation_xyz(p.x, p.y, 0.1);
+
+        let character = characters.get(selection.character).unwrap();
+        money.gold -= character.cost;
+
+        let mut text = text.get_mut(money.text).unwrap();
+        text.text = money.gold.to_string();
     } else {
         transform.set_translation_xyz(selection.start_pos.x, selection.start_pos.y, 0.1);
     }

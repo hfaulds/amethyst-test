@@ -163,12 +163,13 @@ fn init_money(world: &mut World) {
         "P1".to_string(), Anchor::TopRight, Anchor::TopRight,
         -48., -72., 0., 48., 48.,
     );
-    world.create_entity()
+    let entity = world.create_entity()
         .with(transform)
         .with(UiText::new(
-            font,
-            "10".to_string(),
-            [1., 1., 1., 1.],
-            48.,
+                font,
+                "10".to_string(),
+                [1., 1., 1., 1.],
+                48.,
         )).build();
+    world.insert(Money{ gold: 10, text: entity })
 }
