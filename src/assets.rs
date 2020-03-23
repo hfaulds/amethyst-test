@@ -63,10 +63,10 @@ impl Sprites {
         }
     }
 
-    pub fn character_sprite_render(&self) -> SpriteRender {
+    pub fn character_sprite_render(&self, i: usize) -> SpriteRender {
         SpriteRender {
             sprite_sheet: self.handle.clone(),
-            sprite_number: 3,
+            sprite_number: 3 + (i % 6),
         }
     }
 }

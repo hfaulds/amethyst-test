@@ -84,7 +84,7 @@ fn init_shop(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
         let character = Character{cost: 1};
         let character_entity = world
             .create_entity()
-            .with(sprites.character_sprite_render())
+            .with(sprites.character_sprite_render(rand::random::<usize>()))
             .with(transform)
             .with(character.clone())
             .build();
