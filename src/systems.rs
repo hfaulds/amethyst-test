@@ -27,7 +27,8 @@ impl<'s> System<'s> for PurchaseSystem {
         ReadStorage<'s, Camera>,
         WriteStorage<'s, Transform>,
         ReadStorage<'s, Character>,
-        ReadExpect<'s, Shop>,
+        WriteExpect<'s, Shop>,
+        WriteExpect<'s, Reserve>,
     );
 
     fn run(
@@ -39,7 +40,8 @@ impl<'s> System<'s> for PurchaseSystem {
             cameras,
             mut transforms,
             characters,
-            shop,
+            mut shop,
+            mut reserve,
         ): Self::SystemData
     ) {
         let mouse_position = match input.mouse_position() {
@@ -52,53 +54,62 @@ impl<'s> System<'s> for PurchaseSystem {
         };
 
         if !input.mouse_button_is_down(MouseButton::Left) {
-            self.finish_selection(&characters, &mut transforms, &entities);
+            if let Some(selection) = &self.selection {
+                finish_selection(selection, pos_world, &characters, &mut transforms, &entities, &mut shop, &mut reserve);
+                self.selection = None;
+            }
             return
         }
 
         if let Some(selection) = &self.selection {
-            self.continue_selection(selection, pos_world, &characters, &mut transforms, &entities);
+            continue_selection(selection, pos_world, &characters, &mut transforms, &entities);
         } else {
-            self.start_selection(shop, pos_world);
+            self.selection = start_selection(shop, pos_world);
         }
     }
 }
 
-impl PurchaseSystem {
-    fn start_selection(&mut self, shop: ReadExpect<Shop>, pos: Point3<f32>) {
-        self.selection = shop.grid.select(pos);
+fn start_selection(shop: WriteExpect<Shop>, pos: Point3<f32>) -> Option<SelectionStart> {
+    if let Collision::Character(c, p, i) = shop.grid.collide(pos) {
+        return Some(SelectionStart { character: c, start_pos: p, start_index: i })
     }
-
-    fn continue_selection(
-        &self,
-        selection: &SelectionStart,
-        pos: Point3<f32>,
-        characters: &ReadStorage<Character>,
-        transforms: &mut WriteStorage<Transform>,
-        entities: &Entities,
-    ) {
-        let (_, transform) = (characters, transforms).join()
-            .get(selection.character, entities)
-            .unwrap();
-        transform.set_translation_xyz(pos.x, pos.y, 0.1);
-    }
-
-    fn finish_selection(
-        &mut self,
-        characters: &ReadStorage<Character>,
-        transforms: &mut WriteStorage<Transform>,
-        entities: &Entities,
-    ) {
-        if let Some(selection) = &self.selection {
-            let (_, transform) = (characters, transforms).join()
-                .get(selection.character, entities)
-                .unwrap();
-            transform.set_translation_xyz(selection.start_pos.x, selection.start_pos.y, 0.1);
-            self.selection = None;
-        }
-    }
+    None
 }
 
+fn continue_selection(
+    selection: &SelectionStart,
+    pos: Point3<f32>,
+    characters: &ReadStorage<Character>,
+    transforms: &mut WriteStorage<Transform>,
+    entities: &Entities,
+) {
+    let (_, transform) = (characters, transforms).join()
+        .get(selection.character, entities)
+        .unwrap();
+    transform.set_translation_xyz(pos.x, pos.y, 0.1);
+}
+
+fn finish_selection(
+    selection: &SelectionStart,
+    pos: Point3<f32>,
+    characters: &ReadStorage<Character>,
+    transforms: &mut WriteStorage<Transform>,
+    entities: &Entities,
+    shop: &mut WriteExpect<Shop>,
+    reserve: &mut WriteExpect<Reserve>,
+) {
+    let (_, transform) = (characters, transforms).join()
+        .get(selection.character, entities)
+        .unwrap();
+
+    if let Collision::Empty(p, i) = reserve.grid.collide(pos) {
+        shop.grid.remove(i);
+        reserve.grid.add(i, selection.character);
+        transform.set_translation_xyz(p.x, p.y, 0.1);
+    } else {
+        transform.set_translation_xyz(selection.start_pos.x, selection.start_pos.y, 0.1);
+    }
+}
 
 fn get_world_pos_for_cursor(
     mouse_position: (f32, f32),
@@ -154,6 +165,13 @@ pub struct Reserve {
 pub struct SelectionStart {
    pub character: Entity,
    pub start_pos: Point2<f32>,
+   pub start_index: Point2<usize>,
+}
+
+enum Collision {
+    None,
+    Empty(Point2<f32>, Point2<usize>),
+    Character(Entity, Point2<f32>, Point2<usize>),
 }
 
 pub struct Grid<const X: usize, const Y: usize> {
@@ -164,32 +182,38 @@ pub struct Grid<const X: usize, const Y: usize> {
 }
 
 impl<const X: usize, const Y: usize> Grid<X,Y> {
-    fn select(&self, point: Point3<f32>) -> Option<SelectionStart> {
+    fn collide(&self, point: Point3<f32>) -> Collision {
         let x = (point.x + (self.entity_size/2.) - self.x) / self.entity_size;
         if x < 0. {
-            return None
+            return Collision::None
         }
         let x = x as usize;
         if x >= X {
-            return None
+            return Collision::None
         }
         let y = (point.y + (self.entity_size/2.) - self.y) / self.entity_size;
         if y < 0. {
-            return None
+            return Collision::None
         }
         let y = y as usize;
         if y >= Y {
-            return None
+            return Collision::None
         }
+        let pos = Point2::new(
+            self.x + (x as f32 * self.entity_size),
+            self.y + (y as f32 * self.entity_size),
+        );
         if let Some(entity) = self.entities[y as usize][x as usize] {
-            return Some(SelectionStart{
-                character: entity,
-                start_pos: Point2::new(
-                    self.x + (x as f32 * self.entity_size),
-                    self.y + (y as f32 * self.entity_size),
-                ),
-            });
+            return Collision::Character(entity, pos, Point2::new(x, y));
         }
-        None
+        Collision::Empty(pos, Point2::new(x, y))
+    }
+
+    fn remove(&mut self, i: Point2<usize>) {
+        self.entities[i.y][i.x] = None
+    }
+
+    fn add(&mut self, i: Point2<usize>, entity: Entity) {
+        self.entities[i.y][i.x] = Some(entity)
     }
 }
