@@ -1,5 +1,6 @@
 use amethyst::renderer::{ImageFormat, SpriteRender, SpriteSheet, sprite::SpriteSheetHandle, SpriteSheetFormat, Texture};
 use amethyst::assets::{AssetStorage, Loader};
+use amethyst::ui::{FontHandle, TtfFormat};
 use amethyst::prelude::*;
 
 pub struct Sprites {
@@ -67,5 +68,19 @@ impl Sprites {
             sprite_sheet: self.handle.clone(),
             sprite_number: 3,
         }
+    }
+}
+
+pub struct Font {
+}
+
+impl Font {
+    pub fn square(world: &World) -> FontHandle {
+        world.read_resource::<Loader>().load(
+            "font/square.ttf",
+            TtfFormat,
+            (),
+            &world.read_resource(),
+        )
     }
 }

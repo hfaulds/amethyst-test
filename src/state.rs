@@ -3,11 +3,12 @@ use amethyst::{
     input::{get_key, is_close_requested, is_key_down, VirtualKeyCode},
     prelude::*,
     renderer::Camera,
+    ui::{Anchor, UiText, UiTransform},
     window::ScreenDimensions,
 };
 use log::info;
 
-use crate::resources::Sprites;
+use crate::resources::{*};
 use crate::systems::{*};
 
 pub struct MyState;
@@ -24,6 +25,8 @@ impl SimpleState for MyState {
         init_shop(world, &sprites, &screen);
         init_board(world, &sprites, &screen);
         init_reserve(world, &sprites, &screen);
+
+        init_money(world)
     }
 
     fn handle_event(
@@ -86,15 +89,31 @@ fn init_shop(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
             .with(sprites.shop_sprite_render())
             .with(transform)
             .build();
+
         let mut transform = Transform::default();
         transform.set_translation_xyz(x, y, 0.1);
-        let character = world
+        let character = Character{cost: 1};
+        let character_entity = world
             .create_entity()
             .with(sprites.character_sprite_render())
             .with(transform)
-            .with(Character{cost: 1})
+            .with(character.clone())
             .build();
-        shop.grid.entities[0][i] = Some(character);
+        shop.grid.entities[0][i] = Some(character_entity);
+
+        let font = Font::square(world);
+        let transform = UiTransform::new(
+            "P1".to_string(), Anchor::BottomLeft, Anchor::TopLeft,
+            x * 2., y * 2., 0.2, 48., 48., // TODO: Don't do this!
+        );
+        world.create_entity()
+            .with(transform)
+            .with(UiText::new(
+                    font,
+                    character.cost.to_string(),
+                    [1., 1., 1., 1.],
+                    25.,
+            )).build();
     }
     world.insert(shop)
 }
@@ -147,4 +166,20 @@ fn init_reserve(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions)
             .with(sprites.reserve_sprite_render())
             .build();
     }
+}
+
+fn init_money(world: &mut World) {
+    let font = Font::square(world);
+    let transform = UiTransform::new(
+        "P1".to_string(), Anchor::TopRight, Anchor::TopRight,
+        -48., -48., 0., 48., 48.,
+    );
+    world.create_entity()
+        .with(transform)
+        .with(UiText::new(
+            font,
+            "10".to_string(),
+            [1., 1., 1., 1.],
+            50.,
+        )).build();
 }

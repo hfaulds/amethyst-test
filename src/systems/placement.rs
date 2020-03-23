@@ -102,6 +102,7 @@ fn get_world_pos_for_cursor(
     None
 }
 
+#[derive(Clone)]
 pub struct Character {
     pub cost: u8,
 }
