@@ -71,14 +71,22 @@ impl<'s> System<'s> for PurchaseSystem {
         if let Some(selection) = &self.selection {
             continue_selection(selection, pos_world, &characters, &mut transforms, &entities);
         } else {
-            self.selection = start_selection(shop, pos_world);
+            self.selection = start_selection(shop, pos_world, &characters, &money);
         }
     }
 }
 
-fn start_selection(shop: WriteExpect<Shop>, pos: Point3<f32>) -> Option<SelectionStart> {
+fn start_selection(
+    shop: WriteExpect<Shop>,
+    pos: Point3<f32>,
+    characters: &ReadStorage<Character>,
+    money: &WriteExpect<Money>,
+    ) -> Option<SelectionStart> {
     if let Collision::Character(c, p, i) = shop.grid.collide(pos) {
-        return Some(SelectionStart { character: c, start_pos: p, start_index: i })
+        let character = characters.get(c).unwrap();
+        if money.gold >= character.cost {
+            return Some(SelectionStart { character: c, start_pos: p, start_index: i })
+        }
     }
     None
 }
