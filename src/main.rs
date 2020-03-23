@@ -38,7 +38,7 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(RenderUi::default()),
         )?
         .with_bundle(UiBundle::<StringBindings>::new())?
-        .with(systems::PlacementSystem{selection: None}, "paddle_system", &["input_system"]);
+        .with(systems::PurchaseSystem{selection: None}, "purchase_system", &["input_system"]);
 
     let mut game = Application::new(resources, state::MyState, game_data)?;
     game.run();

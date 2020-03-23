@@ -1,12 +1,11 @@
 use amethyst::{
     core::transform::Transform,
-    input::{get_key, is_close_requested, is_key_down, VirtualKeyCode},
+    input::{is_close_requested, is_key_down, VirtualKeyCode},
     prelude::*,
     renderer::Camera,
     ui::{Anchor, UiText, UiTransform},
     window::ScreenDimensions,
 };
-use log::info;
 
 use crate::resources::{*};
 use crate::systems::{*};
@@ -35,22 +34,11 @@ impl SimpleState for MyState {
         event: StateEvent,
     ) -> SimpleTrans {
         if let StateEvent::Window(event) = &event {
-            // Check if the window should be closed
             if is_close_requested(&event) || is_key_down(&event, VirtualKeyCode::Escape) {
                 return Trans::Quit;
             }
-
-            // Listen to any key events
-            if let Some(event) = get_key(&event) {
-                info!("handling key event: {:?}", event);
-            }
-
-            // If you're looking for a more sophisticated event handling solution,
-            // including key bindings and gamepad support, please have a look at
-            // https://book.amethyst.rs/stable/pong-tutorial/pong-tutorial-03.html#capturing-user-input
         }
 
-        // Keep going
         Trans::None
     }
 }
@@ -112,7 +100,7 @@ fn init_shop(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
                     font,
                     character.cost.to_string(),
                     [1., 1., 1., 1.],
-                    25.,
+                    24.,
             )).build();
     }
     world.insert(shop)
@@ -172,7 +160,7 @@ fn init_money(world: &mut World) {
     let font = Font::square(world);
     let transform = UiTransform::new(
         "P1".to_string(), Anchor::TopRight, Anchor::TopRight,
-        -48., -48., 0., 48., 48.,
+        -48., -72., 0., 48., 48.,
     );
     world.create_entity()
         .with(transform)
@@ -180,6 +168,6 @@ fn init_money(world: &mut World) {
             font,
             "10".to_string(),
             [1., 1., 1., 1.],
-            50.,
+            48.,
         )).build();
 }

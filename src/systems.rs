@@ -14,11 +14,11 @@ use amethyst::{
 
 /// This system is responsible for placing characters.
 #[derive(SystemDesc)]
-pub struct PlacementSystem {
+pub struct PurchaseSystem {
     pub selection: Option<SelectionStart>,
 }
 
-impl<'s> System<'s> for PlacementSystem {
+impl<'s> System<'s> for PurchaseSystem {
     type SystemData = (
         Read<'s, InputHandler<StringBindings>>,
         Entities<'s>,
@@ -26,7 +26,7 @@ impl<'s> System<'s> for PlacementSystem {
         ReadExpect<'s, ScreenDimensions>,
         ReadStorage<'s, Camera>,
         WriteStorage<'s, Transform>,
-        WriteStorage<'s, Character>,
+        ReadStorage<'s, Character>,
         ReadExpect<'s, Shop>,
     );
 
@@ -42,16 +42,6 @@ impl<'s> System<'s> for PlacementSystem {
             shop,
         ): Self::SystemData
     ) {
-        if !input.mouse_button_is_down(MouseButton::Left) {
-            if let Some(selection) = &self.selection {
-                let (_, transform) = (&characters, &mut transforms).join()
-                    .get(selection.character, &entities)
-                    .unwrap();
-                transform.set_translation_xyz(selection.start_pos.x, selection.start_pos.y, 0.1);
-                self.selection = None;
-            }
-            return
-        }
         let mouse_position = match input.mouse_position() {
             Some(p) => p,
             None => return,
@@ -61,16 +51,54 @@ impl<'s> System<'s> for PlacementSystem {
             None => return,
         };
 
+        if !input.mouse_button_is_down(MouseButton::Left) {
+            self.finish_selection(&characters, &mut transforms, &entities);
+            return
+        }
+
         if let Some(selection) = &self.selection {
-            let (_, transform) = (&characters, &mut transforms).join()
-                .get(selection.character, &entities)
-                .unwrap();
-            transform.set_translation_xyz(pos_world.x, pos_world.y, 0.1);
+            self.continue_selection(selection, pos_world, &characters, &mut transforms, &entities);
         } else {
-            self.selection = shop.grid.select(pos_world);
+            self.start_selection(shop, pos_world);
         }
     }
 }
+
+impl PurchaseSystem {
+    fn start_selection(&mut self, shop: ReadExpect<Shop>, pos: Point3<f32>) {
+        self.selection = shop.grid.select(pos);
+    }
+
+    fn continue_selection(
+        &self,
+        selection: &SelectionStart,
+        pos: Point3<f32>,
+        characters: &ReadStorage<Character>,
+        transforms: &mut WriteStorage<Transform>,
+        entities: &Entities,
+    ) {
+        let (_, transform) = (characters, transforms).join()
+            .get(selection.character, entities)
+            .unwrap();
+        transform.set_translation_xyz(pos.x, pos.y, 0.1);
+    }
+
+    fn finish_selection(
+        &mut self,
+        characters: &ReadStorage<Character>,
+        transforms: &mut WriteStorage<Transform>,
+        entities: &Entities,
+    ) {
+        if let Some(selection) = &self.selection {
+            let (_, transform) = (characters, transforms).join()
+                .get(selection.character, entities)
+                .unwrap();
+            transform.set_translation_xyz(selection.start_pos.x, selection.start_pos.y, 0.1);
+            self.selection = None;
+        }
+    }
+}
+
 
 fn get_world_pos_for_cursor(
     mouse_position: (f32, f32),
