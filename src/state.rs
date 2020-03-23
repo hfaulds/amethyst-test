@@ -7,8 +7,9 @@ use amethyst::{
     window::ScreenDimensions,
 };
 
+use crate::assets::{*};
+use crate::components::{*};
 use crate::resources::{*};
-use crate::systems::{*};
 
 pub struct MyState;
 

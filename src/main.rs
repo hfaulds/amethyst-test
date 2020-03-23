@@ -13,6 +13,8 @@ use amethyst::{
     utils::application_root_dir,
 };
 
+mod assets;
+mod components;
 mod resources;
 mod state;
 mod systems;
