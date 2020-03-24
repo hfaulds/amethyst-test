@@ -21,20 +21,38 @@ pub struct Reserve {
 }
 
 pub struct SelectionStart {
-   pub character: Entity,
-   pub start_pos: Point2<f32>,
-   pub start_index: Point2<usize>,
+    pub collision_source: CollisionSource,
+    pub character: Entity,
+    pub start_pos: Point2<f32>,
+    pub start_index: Point2<usize>,
 }
 
 pub enum Collision {
     None,
-    Empty(Point2<f32>, Point2<usize>),
-    Character(Entity, Point2<f32>, Point2<usize>),
+    Empty(CollisionSource, Point2<f32>, Point2<usize>),
+    Character(CollisionSource, Entity, Point2<f32>, Point2<usize>),
+}
+
+impl Collision {
+    pub fn or<F: Fn() -> Collision>(self, optb: F) -> Collision {
+        match self {
+            Collision::None => optb(),
+            _ => self,
+        }
+    }
+}
+
+#[derive(Clone,Copy,Debug)]
+pub enum CollisionSource {
+    Shop,
+    Board,
+    Reserve,
 }
 
 pub struct Grid<const X: usize, const Y: usize> {
     pub x: f32,
     pub y: f32,
+    pub collision_source: CollisionSource,
     pub entity_size: f32,
     pub entities: [[Option<Entity>;X];Y],
 }
@@ -62,9 +80,9 @@ impl<const X: usize, const Y: usize> Grid<X,Y> {
             self.y + (y as f32 * self.entity_size),
         );
         if let Some(entity) = self.entities[y as usize][x as usize] {
-            return Collision::Character(entity, pos, Point2::new(x, y));
+            return Collision::Character(self.collision_source, entity, pos, Point2::new(x, y));
         }
-        Collision::Empty(pos, Point2::new(x, y))
+        Collision::Empty(self.collision_source, pos, Point2::new(x, y))
     }
 
     pub fn remove(&mut self, i: Point2<usize>) {

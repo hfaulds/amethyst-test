@@ -64,6 +64,7 @@ fn init_shop(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
         grid: Grid{
             x: (screen.width() * 0.5) + ((0. - (row as f32 * 0.5) + 0.5) * size),
             y: screen.height() - size,
+            collision_source: CollisionSource::Shop,
             entity_size: size,
             entities: [[None; 8];1],
         },
@@ -114,6 +115,7 @@ fn init_board(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions) {
         grid: Grid{
             x: (screen.width() * 0.5) + ((0. - (grid as f32 * 0.5) + 0.5) * size),
             y: (screen.height() * 0.5) + ((0. - (grid as f32 * 0.5) + 0.5) * size),
+            collision_source: CollisionSource::Board,
             entity_size: size,
             entities: [[None; 8];8],
         },
@@ -139,6 +141,7 @@ fn init_reserve(world: &mut World, sprites: &Sprites, screen: &ScreenDimensions)
         grid: Grid{
             x: (screen.width() * 0.5) + ((0. - (row as f32 * 0.5) + 0.5) * size),
             y: size,
+            collision_source: CollisionSource::Reserve,
             entity_size: size,
             entities: [[None; 8];1],
         },

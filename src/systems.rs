@@ -33,6 +33,7 @@ impl<'s> System<'s> for PurchaseSystem {
         WriteExpect<'s, Reserve>,
         WriteStorage<'s, UiText>,
         WriteExpect<'s, Money>,
+        WriteExpect<'s, Board>,
     );
 
     fn run(
@@ -48,6 +49,7 @@ impl<'s> System<'s> for PurchaseSystem {
             mut reserve,
             mut text,
             mut money,
+            mut board,
         ): Self::SystemData
     ) {
         let mouse_position = match input.mouse_position() {
@@ -68,10 +70,14 @@ impl<'s> System<'s> for PurchaseSystem {
                     transform.set_translation_xyz(pos_world.x, pos_world.y, 0.1);
                 },
                 None => {
-                    if let Collision::Character(c, p, i) = shop.grid.collide(pos_world) {
-                        let character = characters.get(c).unwrap();
-                        if money.gold >= character.cost {
-                            self.selection = Some(SelectionStart { character: c, start_pos: p, start_index: i })
+                    if let Collision::Character(collision_source, character, start_pos, start_index) = shop.grid.collide(pos_world) {
+                        self.selection = Some(SelectionStart { collision_source, character, start_pos, start_index });
+                    } else if let Collision::Character(collision_source, character, start_pos, start_index) = board.grid.collide(pos_world) {
+                        self.selection = Some(SelectionStart { collision_source, character, start_pos, start_index });
+                    } else if let Collision::Character(collision_source, character, start_pos, start_index) = reserve.grid.collide(pos_world) {
+                        let c = characters.get(character).unwrap();
+                        if money.gold >= c.cost {
+                            self.selection = Some(SelectionStart { collision_source, character, start_pos, start_index });
                         }
                     }
                 }
@@ -84,90 +90,59 @@ impl<'s> System<'s> for PurchaseSystem {
                 .get(selection.character, &entities)
                 .unwrap();
 
-            if let Collision::Empty(p, i) = reserve.grid.collide(pos_world) {
-                shop.grid.remove(selection.start_index);
-                reserve.grid.add(i, selection.character);
-                transform.set_translation_xyz(p.x, p.y, 0.1);
+            let collision = shop.grid.collide(pos_world).or( || {
+                board.grid.collide(pos_world)
+            }).or( || {
+                reserve.grid.collide(pos_world)
+            });
+            if let Collision::Empty(cs, p, i) = collision {
+                match (selection.collision_source, cs) {
+                    (CollisionSource::Shop, CollisionSource::Board) => {
+                        shop.grid.remove(selection.start_index);
+                        board.grid.add(i, selection.character);
+                        transform.set_translation_xyz(p.x, p.y, 0.1);
 
-                let character = characters.get(selection.character).unwrap();
-                money.gold -= character.cost;
+                        let character = characters.get(selection.character).unwrap();
+                        money.gold -= character.cost;
 
-                let mut text = text.get_mut(money.text).unwrap();
-                text.text = money.gold.to_string();
-            } else {
-                transform.set_translation_xyz(selection.start_pos.x, selection.start_pos.y, 0.1);
-            }
-            self.selection = None;
-        }
-    }
-}
+                        let mut text = text.get_mut(money.text).unwrap();
+                        text.text = money.gold.to_string();
+                    },
+                    (CollisionSource::Shop, CollisionSource::Reserve) => {
+                        shop.grid.remove(selection.start_index);
+                        reserve.grid.add(i, selection.character);
+                        transform.set_translation_xyz(p.x, p.y, 0.1);
 
-#[derive(SystemDesc)]
-pub struct PlacementSystem {
-    pub selection: Option<SelectionStart>,
-}
+                        let character = characters.get(selection.character).unwrap();
+                        money.gold -= character.cost;
 
-impl<'s> System<'s> for PlacementSystem {
-    type SystemData = (
-        Read<'s, InputHandler<StringBindings>>,
-        Entities<'s>,
-        Read<'s, ActiveCamera>,
-        ReadExpect<'s, ScreenDimensions>,
-        ReadStorage<'s, Camera>,
-        WriteStorage<'s, Transform>,
-        ReadStorage<'s, Character>,
-        WriteExpect<'s, Board>,
-        WriteExpect<'s, Reserve>,
-    );
-
-    fn run(
-        &mut self, (
-            input,
-            entities,
-            active_camera,
-            screen,
-            cameras,
-            mut transforms,
-            characters,
-            mut board,
-            mut reserve,
-        ): Self::SystemData
-    ) {
-        let mouse_position = match input.mouse_position() {
-            Some(p) => p,
-            None => return,
-        };
-        let pos_world = match get_world_pos_for_cursor(mouse_position, &entities, active_camera, screen, cameras, &transforms) {
-            Some(p) => p,
-            None => return,
-        };
-
-        if input.mouse_button_is_down(MouseButton::Left) {
-            match &self.selection {
-                Some(selection) => {
-                    let (_, transform) = (&characters, &mut transforms).join()
-                        .get(selection.character, &entities)
-                        .unwrap();
-                    transform.set_translation_xyz(pos_world.x, pos_world.y, 0.1);
-                },
-                None => {
-                    if let Collision::Character(c, p, i) = reserve.grid.collide(pos_world) {
-                        self.selection = Some(SelectionStart { character: c, start_pos: p, start_index: i })
-                    }
+                        let mut text = text.get_mut(money.text).unwrap();
+                        text.text = money.gold.to_string();
+                    },
+                    (CollisionSource::Board, CollisionSource::Board) => {
+                        board.grid.remove(selection.start_index);
+                        board.grid.add(i, selection.character);
+                        transform.set_translation_xyz(p.x, p.y, 0.1);
+                    },
+                    (CollisionSource::Board, CollisionSource::Reserve) => {
+                        board.grid.remove(selection.start_index);
+                        reserve.grid.add(i, selection.character);
+                        transform.set_translation_xyz(p.x, p.y, 0.1);
+                    },
+                    (CollisionSource::Reserve, CollisionSource::Reserve) => {
+                        reserve.grid.remove(selection.start_index);
+                        reserve.grid.add(i, selection.character);
+                        transform.set_translation_xyz(p.x, p.y, 0.1);
+                    },
+                    (CollisionSource::Reserve, CollisionSource::Board) => {
+                        reserve.grid.remove(selection.start_index);
+                        board.grid.add(i, selection.character);
+                        transform.set_translation_xyz(p.x, p.y, 0.1);
+                    },
+                    (_, CollisionSource::Shop) => {
+                        transform.set_translation_xyz(selection.start_pos.x, selection.start_pos.y, 0.1);
+                    },
                 }
-            }
-            return
-        }
-
-        if let Some(selection) = &self.selection {
-            let (_, transform) = (&characters, &mut transforms).join()
-                .get(selection.character, &entities)
-                .unwrap();
-
-            if let Collision::Empty(p, i) = board.grid.collide(pos_world) {
-                reserve.grid.remove(selection.start_index);
-                board.grid.add(i, selection.character);
-                transform.set_translation_xyz(p.x, p.y, 0.1);
             } else {
                 transform.set_translation_xyz(selection.start_pos.x, selection.start_pos.y, 0.1);
             }
