@@ -49,6 +49,17 @@ pub enum CollisionSource {
     Reserve,
 }
 
+pub trait Collidable {
+    fn remove(&mut self, i: Point2<usize>);
+    fn add(&mut self, i: Point2<usize>, entity: Entity);
+}
+
+pub enum Movement<'s> {
+    Move(&'s mut dyn Collidable, &'s mut dyn Collidable, Point2<usize>, Point2<f32>),
+    InternalMove(&'s mut dyn Collidable, Point2<usize>, Point2<f32>),
+    None,
+}
+
 pub struct Grid<const X: usize, const Y: usize> {
     pub x: f32,
     pub y: f32,
@@ -84,12 +95,14 @@ impl<const X: usize, const Y: usize> Grid<X,Y> {
         }
         Collision::Empty(self.collision_source, pos, Point2::new(x, y))
     }
+}
 
-    pub fn remove(&mut self, i: Point2<usize>) {
+impl<const X: usize, const Y: usize> Collidable for Grid<X,Y> {
+    fn remove(&mut self, i: Point2<usize>) {
         self.entities[i.y][i.x] = None
     }
 
-    pub fn add(&mut self, i: Point2<usize>, entity: Entity) {
+    fn add(&mut self, i: Point2<usize>, entity: Entity) {
         self.entities[i.y][i.x] = Some(entity)
     }
 }
